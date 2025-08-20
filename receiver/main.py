@@ -6,13 +6,14 @@ import  _thread
 import network
 import espnow
 from rotary_irq_esp import RotaryIRQ
-from machine import Pin, I2C,RTC,PWM
+from machine import Pin, I2C,RTC,PWM,Timer
 from neopixel import NeoPixel
-
+#import ssd1306big
 from ssd1306 import SSD1306_I2C
 #------------------------------------
 rtc=RTC()
 print(rtc.datetime()[3])
+timer1=Timer(1)
 #------------------------------------
 dt1=Pin(42,Pin.IN)
 rele=Pin(39,Pin.OUT)
@@ -42,7 +43,9 @@ peer = b'\xff\xff\xff\xff\xff\xff'   # MAC address of peer's wifi interface
 e.add_peer(peer)      # Must add_peer() before send()
 #----------------------------------------
 oled=SSD1306_I2C(128,64,i2c,addr=0x3C)
-oled.text('Hello, World!', 0, 0, 1)
+#oled=ssd1306big
+#oled.wrap('1')
+oled.text('text,text',0,0,1)
 oled.show()
 
 #------------------------------------
@@ -84,21 +87,25 @@ def signaloff(command,color):
         np.write()
         pwm0.deinit()
     return
+#====================================
+def signaler(t):
+    pwm0.deinit()
+    rele.off()
+    np[0]=(0,0,10)
+    np.write()
+        
+    e.send(peer,b'signoff')
 #------------------------------
 def dtmuving(color):
     if dt1.value() ==1:
+        
+        timer1.init(mode=Timer.ONE_SHOT,period=2000,callback=signaler)
         pwm0.init(freq=600,duty_u16=32768)
         np[0]=color
         np.write()
         rele.on()
         e.send(peer,b'signon')
-        
-    else:
-        pwm0.deinit()
-        np[0]=(0,0,10)
-        np.write()
-        rele.off()
-        e.send(peer,b'signoff')
+
     return    
 #-----------------------------------------------------------
 a=False
@@ -115,8 +122,7 @@ while True:
         #---------------------    
         if msg == b'end':
            print( "bimgo")
-      
-           #break
+
 #=============================================================        
     val_new = r.value()
     
