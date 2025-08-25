@@ -1,26 +1,30 @@
 import time
 import json
 import sys
+
 import socket
 import  _thread
 import network
 import espnow
 from rotary_irq_esp import RotaryIRQ
 from machine import Pin, I2C,RTC,PWM,Timer
+
 from neopixel import NeoPixel
 #import ssd1306big
 from ssd1306 import SSD1306_I2C
+
 #------------------------------------
 rtc=RTC()
 print(rtc.datetime()[3])
 timer1=Timer(1)
-#------------------------------------
-dt1=Pin(42,Pin.IN)
+
+
 rele=Pin(39,Pin.OUT)
 #------------------------------------
 pin=Pin(48,Pin.OUT)
 np=NeoPixel(pin,2)
 np[0]=(10,10,10)
+np[1]=(50,0,0)
 np.write()
 #====================================
 print("setting up i2c")
@@ -30,6 +34,7 @@ id = 0
 
 i2c = I2C(sda=sda, scl=scl)
 print(i2c.scan())
+
 #----------------------------------------
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)
@@ -42,6 +47,7 @@ print(sta.config('mac') )
 peer = b'\xff\xff\xff\xff\xff\xff'   # MAC address of peer's wifi interface
 e.add_peer(peer)      # Must add_peer() before send()
 #----------------------------------------
+
 oled=SSD1306_I2C(128,64,i2c,addr=0x3C)
 #oled=ssd1306big
 #oled.wrap('1')
@@ -57,6 +63,7 @@ r = RotaryIRQ(pin_num_clk=12,
               range_mode=RotaryIRQ.RANGE_WRAP)
               
 val_old = r.value()
+
 #===========================================================
 nx1=(0,200,200)
 nx2=(200,10,20)
@@ -97,21 +104,39 @@ def signaler(t):
     e.send(peer,b'signoff')
 #------------------------------
 def dtmuving(color):
-    if dt1.value() ==1:
-        
-        timer1.init(mode=Timer.ONE_SHOT,period=2000,callback=signaler)
+    if dt1.value() ==0:
+        #time.sleep_ms(10)
+        timer1.init(mode=Timer.ONE_SHOT,period=100,callback=signaler)
         pwm0.init(freq=600,duty_u16=32768)
         np[0]=color
         np.write()
         rele.on()
         e.send(peer,b'signon')
 
-    return    
+    return
+
 #-----------------------------------------------------------
+
 a=False
+b=1
+def iraq(pin):
+    #print("go_irq")
+    global b
+    b=5
+  
+#------------------------------------
+dt1=Pin(42,Pin.IN,Pin.PULL_UP)
+dt1.irq(trigger=Pin.IRQ_FALLING,handler=iraq)
+    
+
+
+#-----------------------------------------------------------
 while True:
     
-    dtmuving(dtnx)
+    if b==5:
+       dtmuving(dtnx) 
+    
+       b=0
     host, msg = e.recv(1)
     if msg:             # msg == None if timeout in recv()
         print(host, msg)
@@ -122,9 +147,9 @@ while True:
         #---------------------    
         if msg == b'end':
            print( "bimgo")
-
+        continue 
 #=============================================================        
-    val_new = r.value()
+'''   val_new = r.value()
     
     if val_old != val_new:
         val_old = val_new
@@ -133,8 +158,9 @@ while True:
         oled.text(str(val_new), 0, 0, 1)
         oled.show()
     time.sleep_ms(50)
+'''   
 #------------------------------------
-    continue   
+     
 #==========================================================
 
-       
+        
